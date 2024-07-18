@@ -87,7 +87,7 @@ const generateId = () => {
   return String(maxId + 1)
 }
   
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
   if (!body.name || !body.number) {
@@ -107,7 +107,9 @@ app.post('/api/persons', (request, response) => {
           .then(updatedPerson => {
             response.json(updatedPerson);
           })
-          .catch(error => next(error))
+          .catch(error => {
+            next(error)
+          })
       }
       else{
         // Person doesn't exist, create a new entry
@@ -134,7 +136,7 @@ app.put('/api/persons/:id', (request, response, next) => {
     number: body.number,
   }
 
-  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+  Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: 'query' })
     .then(updatedPerson => {
       response.json(updatedPerson)
     })
@@ -152,8 +154,11 @@ const errorHandler = (error, request, response, next) => {
   console.error(error.message)
 
   if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' })
-  } 
+    return response.status(400).send({ error: 'malformatted id' });
+    
+  } else if (error.name === 'ValidationError') { // Adicionado tratamento para erros de validação
+    return response.status(400).json({ error: error.message });
+  }
 
   next(error)
 }
